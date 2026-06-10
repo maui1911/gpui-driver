@@ -2215,6 +2215,7 @@ name = "gpui-driver"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "gpui",
  "gpui-driver-protocol",
  "log",
  "serde",
