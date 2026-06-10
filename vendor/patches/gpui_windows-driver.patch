@@ -1,0 +1,151 @@
+diff --git a/src/directx_renderer.rs b/src/directx_renderer.rs
+index 56cc4cf..a86c577 100644
+--- a/src/directx_renderer.rs
++++ b/src/directx_renderer.rs
+@@ -317,7 +317,11 @@ impl DirectXRenderer {
+         })?;
+ 
+         self.upload_scene_buffers(scene)?;
++        self.draw_batches(scene)?;
++        self.present()
++    }
+ 
++    fn draw_batches(&mut self, scene: &Scene) -> Result<()> {
+         for batch in scene.batches() {
+             match batch {
+                 PrimitiveBatch::Shadows(range) => self.draw_shadows(range.start, range.len()),
+@@ -352,7 +356,90 @@ impl DirectXRenderer {
+                 scene.surfaces.len(),
+             ))?;
+         }
+-        self.present()
++        Ok(())
++    }
++
++    /// Renders `scene` to the backbuffer without presenting, then reads the pixels
++    /// back through a staging texture. This works while the window is occluded,
++    /// minimized, or the session is locked, because presentation (DWM/DXGI Present)
++    /// is never involved. Added for gpui-driver; see docs/spike-a.md.
++    pub(crate) fn render_scene_to_image(
++        &mut self,
++        scene: &Scene,
++        background_appearance: WindowBackgroundAppearance,
++    ) -> Result<image::RgbaImage> {
++        if self.skip_draws {
++            anyhow::bail!("renderer is recovering from a lost device");
++        }
++        self.pre_draw(&match background_appearance {
++            WindowBackgroundAppearance::Opaque => [1.0f32; 4],
++            _ => [0.0f32; 4],
++        })?;
++        self.upload_scene_buffers(scene)?;
++        self.draw_batches(scene)?;
++
++        let devices = self.devices.as_ref().context("devices missing")?;
++        let resources = self.resources.as_ref().context("resources missing")?;
++        let render_target = resources
++            .render_target
++            .as_ref()
++            .context("missing render target")?;
++
++        let staging_texture = {
++            let desc = D3D11_TEXTURE2D_DESC {
++                Width: self.width,
++                Height: self.height,
++                MipLevels: 1,
++                ArraySize: 1,
++                Format: RENDER_TARGET_FORMAT,
++                SampleDesc: DXGI_SAMPLE_DESC {
++                    Count: 1,
++                    Quality: 0,
++                },
++                Usage: D3D11_USAGE_STAGING,
++                BindFlags: 0,
++                CPUAccessFlags: D3D11_CPU_ACCESS_READ.0 as u32,
++                MiscFlags: 0,
++            };
++            let mut texture = None;
++            unsafe {
++                devices
++                    .device
++                    .CreateTexture2D(&desc, None, Some(&mut texture))
++            }
++            .context("creating staging texture for readback")?;
++            texture.unwrap()
++        };
++
++        let device_context = &devices.device_context;
++        unsafe { device_context.CopyResource(&staging_texture, render_target) };
++
++        let mut mapped = D3D11_MAPPED_SUBRESOURCE::default();
++        unsafe { device_context.Map(&staging_texture, 0, D3D11_MAP_READ, 0, Some(&mut mapped)) }
++            .context("mapping staging texture")?;
++
++        let width = self.width as usize;
++        let height = self.height as usize;
++        let mut pixels = vec![0u8; width * height * 4];
++        unsafe {
++            let src_base = mapped.pData as *const u8;
++            let row_pitch = mapped.RowPitch as usize;
++            for y in 0..height {
++                let src_row = slice::from_raw_parts(src_base.add(y * row_pitch), width * 4);
++                let dst_row = &mut pixels[y * width * 4..(y + 1) * width * 4];
++                // BGRA -> RGBA
++                for x in 0..width {
++                    dst_row[x * 4] = src_row[x * 4 + 2];
++                    dst_row[x * 4 + 1] = src_row[x * 4 + 1];
++                    dst_row[x * 4 + 2] = src_row[x * 4];
++                    dst_row[x * 4 + 3] = src_row[x * 4 + 3];
++                }
++            }
++            device_context.Unmap(&staging_texture, 0);
++        }
++
++        image::RgbaImage::from_raw(self.width, self.height, pixels)
++            .context("constructing image from readback pixels")
+     }
+ 
+     pub(crate) fn resize(&mut self, new_size: Size<DevicePixels>) -> Result<()> {
+diff --git a/src/window.rs b/src/window.rs
+index a0ca2bb..f6556ff 100644
+--- a/src/window.rs
++++ b/src/window.rs
+@@ -828,6 +828,20 @@ impl PlatformWindow for WindowsWindow {
+             .ok();
+     }
+ 
++    // Added for gpui-driver: the trait's default returns an empty string; agents use
++    // window titles to tell windows apart.
++    fn get_title(&self) -> String {
++        unsafe {
++            let len = GetWindowTextLengthW(self.0.hwnd);
++            if len == 0 {
++                return String::new();
++            }
++            let mut buffer = vec![0u16; len as usize + 1];
++            let read = GetWindowTextW(self.0.hwnd, &mut buffer);
++            String::from_utf16_lossy(&buffer[..read.max(0) as usize])
++        }
++    }
++
+     fn set_background_appearance(&self, background_appearance: WindowBackgroundAppearance) {
+         self.state.background_appearance.set(background_appearance);
+         let hwnd = self.0.hwnd;
+@@ -947,6 +961,17 @@ impl PlatformWindow for WindowsWindow {
+             .log_err();
+     }
+ 
++    // Added for gpui-driver (docs/spike-a.md): render the scene offscreen and read the
++    // pixels back, independent of presentation, so it works while occluded or locked.
++    // The vendored manifest always enables gpui/test-support, which makes this trait
++    // method exist on every build that uses this patch.
++    fn render_to_image(&self, scene: &Scene) -> anyhow::Result<image::RgbaImage> {
++        self.state
++            .renderer
++            .borrow_mut()
++            .render_scene_to_image(scene, self.state.background_appearance.get())
++    }
++
+     fn sprite_atlas(&self) -> Arc<dyn PlatformAtlas> {
+         self.state.renderer.borrow().sprite_atlas()
+     }
