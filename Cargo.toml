@@ -1,0 +1,45 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/gpui-driver-protocol",
+    "crates/gpui-driver",
+    "crates/gpui-driver-cli",
+    "examples/demo-app",
+    "examples/spike-a",
+]
+default-members = [
+    "crates/gpui-driver-protocol",
+    "crates/gpui-driver-cli",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/maui1911/gpui-driver"
+
+[workspace.dependencies]
+gpui-driver-protocol = { path = "crates/gpui-driver-protocol" }
+gpui-driver = { path = "crates/gpui-driver" }
+gpui = { git = "https://github.com/zed-industries/zed", rev = "20a3f7705f18a9913571d4fcdee687b76abdb213", features = ["test-support"] }
+gpui_platform = { git = "https://github.com/zed-industries/zed", rev = "20a3f7705f18a9913571d4fcdee687b76abdb213" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+anyhow = "1"
+base64 = "0.22"
+log = "0.4"
+futures = "0.3"
+rand = "0.9"
+chrono = "0.4"
+# image version matches gpui's, so RgbaImage types line up
+image = "0.25.1"
+
+# gpui is a heavy dependency; line tables keep example-app link times sane.
+[profile.dev]
+debug = "line-tables-only"
+
+# Swap in our vendored gpui_windows (adds PlatformWindow::render_to_image readback,
+# needed for screenshots of occluded/locked windows — see docs/spike-a.md).
+# Host apps using gpui-driver on Windows need this same patch in their workspace root.
+[patch."https://github.com/zed-industries/zed"]
+gpui_windows = { path = "vendor/gpui_windows" }

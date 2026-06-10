@@ -1,0 +1,22 @@
+[package]
+name = "gpui-driver-cli"
+description = "CLI for driving GPUI applications instrumented with gpui-driver"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[[bin]]
+name = "gpui-driver"
+path = "src/main.rs"
+
+[dependencies]
+gpui-driver-protocol.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+anyhow.workspace = true
+base64.workspace = true
+clap = { version = "4", features = ["derive"] }
+
+[dev-dependencies]
+tempfile = "3"

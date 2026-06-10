@@ -1,0 +1,12 @@
+[package]
+name = "spike-a"
+description = "Spike A: verify offscreen scene readback works while occluded/minimized/locked"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+gpui.workspace = true
+gpui_platform.workspace = true
+image = "0.25.1"

@@ -1,0 +1,114 @@
+# Vendored copy of zed's crates/gpui_windows at rev 20a3f7705f18a9913571d4fcdee687b76abdb213,
+# with one addition: `PlatformWindow::render_to_image` (offscreen scene readback) so that
+# gpui-driver can take screenshots of occluded/locked windows. See docs/spike-a.md.
+#
+# Workspace-inherited dependencies have been rewritten: zed-internal crates point at the
+# same pinned git rev; third-party versions copied from zed's root Cargo.toml.
+
+[package]
+name = "gpui_windows"
+version = "0.1.0"
+edition = "2024"
+publish = false
+license = "Apache-2.0"
+
+[lib]
+path = "src/gpui_windows.rs"
+
+[features]
+default = ["gpui/default"]
+test-support = ["gpui/test-support"]
+screen-capture = ["gpui/screen-capture", "scap"]
+
+# test-support is enabled unconditionally: the render_to_image method only exists on
+# the PlatformWindow trait when gpui is compiled with test-support.
+[dependencies]
+gpui = { git = "https://github.com/zed-industries/zed", rev = "20a3f7705f18a9913571d4fcdee687b76abdb213", features = ["test-support"] }
+
+[target.'cfg(target_os = "windows")'.dependencies]
+accesskit = "0.24.0"
+accesskit_windows = "0.32.1"
+anyhow = "1.0.86"
+collections = { git = "https://github.com/zed-industries/zed", rev = "20a3f7705f18a9913571d4fcdee687b76abdb213" }
+etagere = "0.2"
+futures = "0.3.32"
+image = "0.25.1"
+itertools = "0.14.0"
+log = { version = "0.4.16", features = ["kv_unstable_serde", "serde"] }
+parking_lot = "0.12.1"
+rand = "0.9"
+raw-window-handle = "0.6"
+smallvec = { version = "1.6", features = ["union", "const_new"] }
+util = { git = "https://github.com/zed-industries/zed", rev = "20a3f7705f18a9913571d4fcdee687b76abdb213" }
+uuid = { version = "1.1.2", features = ["v4", "v5", "v7", "serde"] }
+windows-core = "0.61"
+windows-numerics = "0.2"
+windows-registry = "0.5"
+
+[target.'cfg(target_os = "windows")'.dependencies.windows]
+version = "0.61"
+features = [
+    "Foundation_Numerics",
+    "Globalization_DateTimeFormatting",
+    "Storage_Search",
+    "Storage_Streams",
+    "System_Threading",
+    "UI_ViewManagement",
+    "Wdk_System_SystemServices",
+    "Win32_Foundation",
+    "Win32_Globalization",
+    "Win32_Graphics_Direct3D",
+    "Win32_Graphics_Direct3D11",
+    "Win32_Graphics_Direct3D_Fxc",
+    "Win32_Graphics_DirectComposition",
+    "Win32_Graphics_DirectWrite",
+    "Win32_Graphics_DirectManipulation",
+    "Win32_Graphics_Dwm",
+    "Win32_Graphics_Dxgi",
+    "Win32_Graphics_Dxgi_Common",
+    "Win32_Graphics_Gdi",
+    "Win32_Graphics_Imaging",
+    "Win32_Graphics_Hlsl",
+    "Win32_Networking_WinSock",
+    "Win32_Security",
+    "Win32_Security_Credentials",
+    "Win32_Security_Cryptography",
+    "Win32_Storage_FileSystem",
+    "Win32_System_Com",
+    "Win32_System_Com_StructuredStorage",
+    "Win32_System_Console",
+    "Win32_System_Diagnostics_Debug",
+    "Win32_System_DataExchange",
+    "Win32_System_IO",
+    "Win32_System_LibraryLoader",
+    "Win32_System_Memory",
+    "Win32_System_Ole",
+    "Win32_System_Performance",
+    "Win32_System_Pipes",
+    "Win32_System_RestartManager",
+    "Win32_System_SystemInformation",
+    "Win32_System_SystemServices",
+    "Win32_System_Threading",
+    "Win32_System_Variant",
+    "Win32_System_WinRT",
+    "Win32_UI_Controls",
+    "Win32_UI_HiDpi",
+    "Win32_UI_Input_Ime",
+    "Win32_UI_Input_KeyboardAndMouse",
+    "Win32_UI_Input_Pointer",
+    "Win32_UI_Shell",
+    "Win32_UI_Shell_Common",
+    "Win32_UI_Shell_PropertiesSystem",
+    "Win32_UI_WindowsAndMessaging",
+    "Win32_Media",
+]
+
+[target.'cfg(target_os = "windows")'.dependencies.scap]
+git = "https://github.com/zed-industries/scap"
+rev = "4afea48c3b002197176fb19cd0f9b180dd36eaac"
+default-features = false
+package = "zed-scap"
+optional = true
+
+[target.'cfg(target_os = "windows")'.build-dependencies]
+windows-registry = "0.5"
