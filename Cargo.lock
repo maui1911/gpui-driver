@@ -2215,9 +2215,14 @@ name = "gpui-driver"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "base64",
+ "chrono",
+ "futures",
  "gpui",
  "gpui-driver-protocol",
+ "image",
  "log",
+ "rand 0.9.4",
  "serde",
  "serde_json",
 ]

@@ -28,6 +28,11 @@ serde_json = "1"
 anyhow = "1"
 base64 = "0.22"
 log = "0.4"
+futures = "0.3"
+rand = "0.9"
+chrono = "0.4"
+# image version matches gpui's, so RgbaImage types line up
+image = "0.25.1"
 
 # gpui is a heavy dependency; line tables keep example-app link times sane.
 [profile.dev]
