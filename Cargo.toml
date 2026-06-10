@@ -5,6 +5,7 @@ members = [
     "crates/gpui-driver",
     "crates/gpui-driver-cli",
     "examples/demo-app",
+    "examples/spike-a",
 ]
 default-members = [
     "crates/gpui-driver-protocol",
@@ -31,3 +32,9 @@ log = "0.4"
 # gpui is a heavy dependency; line tables keep example-app link times sane.
 [profile.dev]
 debug = "line-tables-only"
+
+# Swap in our vendored gpui_windows (adds PlatformWindow::render_to_image readback,
+# needed for screenshots of occluded/locked windows — see docs/spike-a.md).
+# Host apps using gpui-driver on Windows need this same patch in their workspace root.
+[patch."https://github.com/zed-industries/zed"]
+gpui_windows = { path = "vendor/gpui_windows" }
