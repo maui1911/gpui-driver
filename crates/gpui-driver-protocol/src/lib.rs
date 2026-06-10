@@ -247,6 +247,10 @@ pub struct ScreenshotParams {
     pub window_id: u64,
 }
 
+fn default_screenshot_method() -> String {
+    "renderer".to_string()
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ScreenshotResult {
     pub format: String,
@@ -254,6 +258,12 @@ pub struct ScreenshotResult {
     pub width: u32,
     pub height: u32,
     pub scale: f32,
+    /// How the image was captured: `"renderer"` (offscreen scene readback via the
+    /// vendored gpui_windows patch; reliable while occluded/minimized/locked) or
+    /// `"printwindow"` (Win32 PrintWindow fallback; best effort, the window should
+    /// be visible). Older servers omit the field; it defaults to `"renderer"`.
+    #[serde(default = "default_screenshot_method")]
+    pub method: String,
 }
 
 // ---- wait_idle ----
@@ -525,8 +535,18 @@ mod tests {
             width: 1280,
             height: 800,
             scale: 1.0,
+            method: "printwindow".into(),
         };
-        assert_eq!(serde_json::to_value(&r).unwrap()["data_base64"], "AAAA");
+        let v = serde_json::to_value(&r).unwrap();
+        assert_eq!(v["data_base64"], "AAAA");
+        assert_eq!(v["method"], "printwindow");
+
+        // method defaults to "renderer" when an older server omits it
+        let r: ScreenshotResult = serde_json::from_value(json!({
+            "format":"png","data_base64":"AAAA","width":1,"height":1,"scale":1.0
+        }))
+        .unwrap();
+        assert_eq!(r.method, "renderer");
 
         // defaults: timeout_ms 5000, quiet_ms 150
         let p: WaitIdleParams = serde_json::from_value(json!({"token":"t","window_id":0})).unwrap();
