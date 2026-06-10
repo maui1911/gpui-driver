@@ -828,6 +828,20 @@ impl PlatformWindow for WindowsWindow {
             .ok();
     }
 
+    // Added for gpui-driver: the trait's default returns an empty string; agents use
+    // window titles to tell windows apart.
+    fn get_title(&self) -> String {
+        unsafe {
+            let len = GetWindowTextLengthW(self.0.hwnd);
+            if len == 0 {
+                return String::new();
+            }
+            let mut buffer = vec![0u16; len as usize + 1];
+            let read = GetWindowTextW(self.0.hwnd, &mut buffer);
+            String::from_utf16_lossy(&buffer[..read.max(0) as usize])
+        }
+    }
+
     fn set_background_appearance(&self, background_appearance: WindowBackgroundAppearance) {
         self.state.background_appearance.set(background_appearance);
         let hwnd = self.0.hwnd;

@@ -47,6 +47,11 @@ async fn dispatch(meta: &DriverMeta, cx: &mut AsyncApp, req: RpcRequest) -> RpcR
             Ok(p) => handle_wait_idle(cx, p).await,
             Err(e) => Err(e),
         },
+        "type_text" => params(req.params).and_then(|p| handle_type_text(cx, p)),
+        "key" => params(req.params).and_then(|p| handle_key(cx, p)),
+        "scroll" => params(req.params).and_then(|p| handle_scroll(cx, p)),
+        "focus" => params(req.params).and_then(|p| handle_focus(cx, p)),
+        "query" => params(req.params).and_then(|p| handle_query(cx, p)),
         other => Err((
             ErrorKind::Unsupported,
             format!("unknown method: {other}"),
@@ -311,6 +316,150 @@ fn handle_screenshot(cx: &mut AsyncApp, p: proto::ScreenshotParams) -> HandlerRe
         height,
         scale,
     }))
+}
+
+/// Maps a plain character to GPUI keystroke syntax (`' '` is named `space`, etc.).
+fn keystroke_for_char(ch: char) -> String {
+    match ch {
+        ' ' => "space".to_string(),
+        '\n' => "enter".to_string(),
+        '\t' => "tab".to_string(),
+        '-' => "minus".to_string(),
+        other => other.to_string(),
+    }
+}
+
+fn handle_type_text(cx: &mut AsyncApp, p: proto::TypeTextParams) -> HandlerResult {
+    let handle = resolve_window(cx, p.window_id)?;
+    handle
+        .update(cx, |_, window, cx| {
+            for ch in p.text.chars() {
+                // Mirrors gpui's TestAppContext::simulate_input: parse each character
+                // as a keystroke; dispatch_keystroke simulates IME so key_char is set.
+                match gpui::Keystroke::parse(&keystroke_for_char(ch)) {
+                    Ok(keystroke) => {
+                        window.dispatch_keystroke(keystroke, cx);
+                    }
+                    Err(_) => {
+                        log::debug!("gpui-driver: skipping untypeable character {ch:?}");
+                    }
+                }
+            }
+        })
+        .map_err(internal)?;
+    Ok(json!(proto::TypeTextResult { typed: true }))
+}
+
+fn handle_key(cx: &mut AsyncApp, p: proto::KeyParams) -> HandlerResult {
+    let keystroke = gpui::Keystroke::parse(&p.combo).map_err(|_| {
+        (
+            ErrorKind::Internal,
+            format!("invalid keystroke combo: {:?}", p.combo),
+        )
+    })?;
+    let handle = resolve_window(cx, p.window_id)?;
+    let dispatched = handle
+        .update(cx, |_, window, cx| window.dispatch_keystroke(keystroke, cx))
+        .map_err(internal)?;
+    Ok(json!(proto::KeyResult { dispatched }))
+}
+
+fn handle_scroll(cx: &mut AsyncApp, p: proto::ScrollParams) -> HandlerResult {
+    let handle = resolve_window(cx, p.window_id)?;
+    let (records, _) = collect_fresh(cx, handle)?;
+    let record = find_record(&records, &p.id)
+        .ok_or_else(|| {
+            (
+                ErrorKind::ElementNotFound,
+                format!("no element with driver id {:?}", p.id),
+            )
+        })?
+        .clone();
+    let position = center_of(record.bounds);
+
+    handle
+        .update(cx, |_, window, cx| {
+            window.dispatch_event(
+                PlatformInput::MouseMove(MouseMoveEvent {
+                    position,
+                    pressed_button: None,
+                    modifiers: Modifiers::default(),
+                }),
+                cx,
+            );
+            window.dispatch_event(
+                PlatformInput::ScrollWheel(gpui::ScrollWheelEvent {
+                    position,
+                    delta: gpui::ScrollDelta::Pixels(gpui::point(
+                        gpui::px(p.delta_x),
+                        gpui::px(p.delta_y),
+                    )),
+                    modifiers: Modifiers::default(),
+                    touch_phase: gpui::TouchPhase::Moved,
+                }),
+                cx,
+            );
+        })
+        .map_err(internal)?;
+    Ok(json!(proto::ScrollResult { scrolled: true }))
+}
+
+/// v0 semantics: focus by synthesizing a left click on the element's center, which is
+/// how a user would focus it. A future version may use focus handles directly.
+fn handle_focus(cx: &mut AsyncApp, p: proto::FocusParams) -> HandlerResult {
+    let click = proto::ClickParams {
+        token: p.token,
+        window_id: p.window_id,
+        id: p.id,
+        button: proto::MouseButton::Left,
+        modifiers: Vec::new(),
+    };
+    handle_click(cx, click)?;
+    Ok(json!(proto::FocusResult { focused: true }))
+}
+
+fn handle_query(cx: &mut AsyncApp, p: proto::QueryParams) -> HandlerResult {
+    if p.text_contains.is_none() && p.id_contains.is_none() {
+        return Err((
+            ErrorKind::Internal,
+            "query needs text_contains and/or id_contains".into(),
+        ));
+    }
+    let handle = resolve_window(cx, p.window_id)?;
+    let (records, viewport) = collect_fresh(cx, handle)?;
+    let text_needle = p.text_contains.as_deref().map(str::to_lowercase);
+    let id_needle = p.id_contains.as_deref().map(str::to_lowercase);
+
+    let matches: Vec<proto::TreeNode> = records
+        .iter()
+        .filter(|r| {
+            let text_ok = text_needle.as_deref().is_none_or(|needle| {
+                r.text
+                    .as_deref()
+                    .is_some_and(|t| t.to_lowercase().contains(needle))
+            });
+            let id_ok = id_needle
+                .as_deref()
+                .is_none_or(|needle| r.id.to_lowercase().contains(needle));
+            text_ok && id_ok
+        })
+        .map(|r| proto::TreeNode {
+            id: Some(r.id.clone()),
+            kind: r.kind.clone(),
+            text: r.text.clone(),
+            bounds: r.bounds,
+            visible: r.bounds.w > 0.0
+                && r.bounds.h > 0.0
+                && r.bounds.x < viewport.w
+                && r.bounds.y < viewport.h,
+            enabled: true,
+            focused: false,
+            interactive: r.interactive,
+            children: Vec::new(),
+        })
+        .collect();
+
+    Ok(json!(proto::QueryResult { matches }))
 }
 
 fn fnv1a(bytes: &[u8]) -> u64 {
