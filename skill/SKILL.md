@@ -26,7 +26,11 @@ server. All interaction goes through stable element ids; screenshots are your ey
 4. **Settle:** `gpui-driver wait-idle` after every action (resolves when the rendered
    output stops changing).
 5. **Verify with your eyes:** `gpui-driver screenshot -o shot.png`, then *look at the
-   image* and judge the result. The screenshot is the assertion.
+   image* and judge the result. The screenshot is the assertion. Check the reported
+   capture `method`: `renderer` is always trustworthy; `printwindow` (fallback for
+   apps built without the gpui_windows patch — a stderr warning appears) is only
+   trustworthy while the window is visible on screen. With `printwindow`, do not
+   treat screenshots taken while occluded/minimized/locked as evidence.
 6. Repeat from 2 — re-fetch the tree after every state change; don't click blind.
 
 ## Commands

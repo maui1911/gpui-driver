@@ -57,8 +57,17 @@ fresh frame before capturing.
 - macOS already implements the headless Metal path upstream; Linux (blade) is untested
   and out of v0 scope → `unsupported` error.
 
-## Upstreaming
+## Maintenance plan
 
-The patch is small, additive, and mirrors the macOS test-support capability — a good
-candidate PR to zed (`gpui_windows`: implement `PlatformWindow::render_to_image`). Until
-merged, the vendored copy is pinned to the same rev as the gpui git dependency.
+The vendored copy — pinned to the same rev as the gpui git dependency — is the
+permanent plan of record. The change lives as a standalone diff in
+`vendor/patches/gpui_windows-driver.patch`; `tools/update-vendor.sh` makes rev bumps
+mechanical, and the weekly canary CI surfaces upstream breakage early. The patch is
+small, additive, and mirrors the macOS test-support capability, so it would also make
+a reasonable PR to zed (`gpui_windows`: implement `PlatformWindow::render_to_image`) —
+but given zed's PR backlog, nothing here waits on or assumes that.
+
+For apps built without the patch, the driver falls back to Win32
+`PrintWindow(PW_RENDERFULLCONTENT)` and reports `method: "printwindow"` in the
+screenshot result; that path needs no gpui changes but offers no occluded/locked
+guarantees.

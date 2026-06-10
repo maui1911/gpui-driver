@@ -65,14 +65,23 @@ div()
     .driver_text("Save")               // optional text reported in `tree`
 ```
 
-On Windows you currently also need a one-method patch to `gpui_windows` for
-screenshots (upstreaming planned — see [docs/spike-a.md](docs/spike-a.md)). Add to your
-workspace root:
+For **reliable** screenshots on Windows (fresh frames while occluded, minimized, or
+session-locked), add the vendored `gpui_windows` patch to your workspace root:
 
 ```toml
 [patch."https://github.com/zed-industries/zed"]
 gpui_windows = { git = "https://github.com/maui1911/gpui-driver" }
 ```
+
+This is the supported, permanent setup — not a stopgap. The patch is two additive
+methods (`render_to_image`, `get_title`), it lives as a standalone diff in
+[`vendor/patches/`](vendor/patches/), and rev bumps are mechanical via
+[`tools/update-vendor.sh`](tools/update-vendor.sh). Upstreaming to zed would make it
+unnecessary, but nothing here depends on that happening.
+
+Without the patch the driver still works: `screenshot` falls back to Win32
+`PrintWindow` and reports which path produced the image (see
+[Screenshot methods](#screenshot-methods)).
 
 > **⚠️ Never enable the `driver` feature in release builds.** The server accepts
 > JSON-RPC on localhost, authenticated only by a token in the user's temp directory.
@@ -125,7 +134,25 @@ An agent skill teaching the workflow ships in [`skill/SKILL.md`](skill/SKILL.md)
 
 gpui is a git dependency pinned to zed rev `20a3f7705f18a9913571d4fcdee687b76abdb213`.
 The host app and gpui-driver must use the *same* gpui build; a weekly CI canary builds
-against zed `main` to surface breakage early.
+against zed `main` to surface breakage early. To bump the pinned rev, run
+`tools/update-vendor.sh <new-rev>` — it refetches upstream `gpui_windows`, re-applies
+the driver patch, and updates both manifests.
+
+## Screenshot methods
+
+The `screenshot` result carries a `method` field telling you how the image was
+captured — agents should treat the two very differently:
+
+| `method` | requires | occluded | minimized | session locked |
+|---|---|---|---|---|
+| `renderer` | the `[patch]` line above | ✅ fresh | ✅ fresh | ✅ fresh (verified) |
+| `printwindow` | nothing (stock gpui) | ⚠️ best effort | ⚠️ may be stale/black | ⚠️ may be stale/black |
+
+`renderer` reads pixels straight back from the DirectX renderer without presenting, so
+the screen state is irrelevant. `printwindow` asks the window to paint itself into a
+memory DC (`PrintWindow` + `PW_RENDERFULLCONTENT`); it is a fine fallback while the
+window is visible, but its output is not trustworthy evidence once the window isn't.
+The CLI prints a warning on stderr whenever the fallback was used.
 
 ## Protocol
 
@@ -140,7 +167,7 @@ shapes, and [gpui-driver-DESIGN.md](gpui-driver-DESIGN.md) for the design ration
 
 | Platform | tree/click/input | screenshot |
 |---|---|---|
-| Windows | ✅ | ✅ (with vendored patch; works occluded/minimized/locked) |
+| Windows | ✅ | ✅ patched: `renderer` (occluded/minimized/locked) · unpatched: `printwindow` fallback |
 | macOS | ✅ (untested) | possible upstream (`test-support` Metal path), untested |
 | Linux | ✅ (untested) | ❌ `unsupported` (v0) |
 
