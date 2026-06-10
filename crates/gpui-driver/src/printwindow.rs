@@ -46,7 +46,12 @@ pub(crate) fn capture_hwnd(hwnd: isize) -> Result<image::RgbaImage> {
     }
 }
 
-unsafe fn capture_with_dc(hdc: HDC, hwnd: HWND, width: i32, height: i32) -> Result<image::RgbaImage> {
+unsafe fn capture_with_dc(
+    hdc: HDC,
+    hwnd: HWND,
+    width: i32,
+    height: i32,
+) -> Result<image::RgbaImage> {
     unsafe {
         let bmi = BITMAPINFO {
             bmiHeader: BITMAPINFOHEADER {
