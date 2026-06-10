@@ -21,6 +21,8 @@
 mod discovery;
 mod element;
 mod handlers;
+#[cfg(target_os = "windows")]
+mod printwindow;
 mod registry;
 mod server;
 
