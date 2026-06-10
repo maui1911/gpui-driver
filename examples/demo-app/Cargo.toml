@@ -7,6 +7,10 @@ license.workspace = true
 publish = false
 
 [dependencies]
+gpui.workspace = true
+gpui_platform.workspace = true
+gpui-driver = { workspace = true, optional = true }
 
 [features]
-driver = []
+default = ["driver"]
+driver = ["dep:gpui-driver"]

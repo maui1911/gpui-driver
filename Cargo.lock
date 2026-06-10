@@ -1429,6 +1429,11 @@ checksum = "ac6b926516df9c60bfa16e107b21086399f8285a44ca9711344b9e553c5146e2"
 [[package]]
 name = "demo-app"
 version = "0.1.0"
+dependencies = [
+ "gpui",
+ "gpui-driver",
+ "gpui_platform",
+]
 
 [[package]]
 name = "derive_more"
