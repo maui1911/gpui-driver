@@ -36,7 +36,7 @@ usable while an agent tests your app, and CI-style runs survive lock screens.
 ```toml
 # Cargo.toml
 [dependencies]
-gpui-driver = { git = "https://github.com/mauiwind/gpui-driver", optional = true }
+gpui-driver = { git = "https://github.com/maui1911/gpui-driver", optional = true }
 
 [features]
 driver = ["dep:gpui-driver"]
@@ -71,7 +71,7 @@ workspace root:
 
 ```toml
 [patch."https://github.com/zed-industries/zed"]
-gpui_windows = { git = "https://github.com/mauiwind/gpui-driver" }
+gpui_windows = { git = "https://github.com/maui1911/gpui-driver" }
 ```
 
 > **⚠️ Never enable the `driver` feature in release builds.** The server accepts

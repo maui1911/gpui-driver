@@ -16,7 +16,7 @@ default-members = [
 version = "0.1.0"
 edition = "2024"
 license = "MIT OR Apache-2.0"
-repository = "https://github.com/mauiwind/gpui-driver"
+repository = "https://github.com/maui1911/gpui-driver"
 
 [workspace.dependencies]
 gpui-driver-protocol = { path = "crates/gpui-driver-protocol" }
