@@ -1,0 +1,12 @@
+[package]
+name = "demo-app"
+description = "Example GPUI app instrumented with gpui-driver"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+
+[features]
+driver = []
