@@ -46,7 +46,12 @@ pub struct RpcResponse {
 
 impl RpcResponse {
     pub fn success(id: u64, result: serde_json::Value) -> Self {
-        Self { jsonrpc: "2.0".into(), id, result: Some(result), error: None }
+        Self {
+            jsonrpc: "2.0".into(),
+            id,
+            result: Some(result),
+            error: None,
+        }
     }
 
     pub fn error(id: u64, kind: ErrorKind, message: impl Into<String>) -> Self {
@@ -195,18 +200,13 @@ pub struct TreeNode {
 
 // ---- click ----
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum MouseButton {
+    #[default]
     Left,
     Right,
     Middle,
-}
-
-impl Default for MouseButton {
-    fn default() -> Self {
-        MouseButton::Left
-    }
 }
 
 /// Keyboard modifiers, as accepted in `click.modifiers`.
@@ -431,7 +431,12 @@ mod tests {
             id: Some("save_button".into()),
             kind: "div".into(),
             text: Some("Save".into()),
-            bounds: Bounds { x: 412.0, y: 88.0, w: 96.0, h: 32.0 },
+            bounds: Bounds {
+                x: 412.0,
+                y: 88.0,
+                w: 96.0,
+                h: 32.0,
+            },
             visible: true,
             enabled: true,
             focused: false,
@@ -440,7 +445,12 @@ mod tests {
                 id: None,
                 kind: "text".into(),
                 text: Some("Save".into()),
-                bounds: Bounds { x: 420.0, y: 92.0, w: 80.0, h: 24.0 },
+                bounds: Bounds {
+                    x: 420.0,
+                    y: 92.0,
+                    w: 80.0,
+                    h: 24.0,
+                },
                 visible: true,
                 enabled: true,
                 focused: false,
@@ -490,7 +500,12 @@ mod tests {
             windows: vec![WindowInfo {
                 window_id: 0,
                 title: "CodeScope".into(),
-                bounds: Bounds { x: 0.0, y: 0.0, w: 1280.0, h: 800.0 },
+                bounds: Bounds {
+                    x: 0.0,
+                    y: 0.0,
+                    w: 1280.0,
+                    h: 800.0,
+                },
                 active: true,
             }],
         };

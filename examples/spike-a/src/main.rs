@@ -34,7 +34,10 @@ impl Render for Ticker {
             .text_xl()
             .text_color(rgb(0xffffff))
             .child(format!("tick {}", self.ticks))
-            .child(format!("elapsed {:.1}s", self.started.elapsed().as_secs_f32()))
+            .child(format!(
+                "elapsed {:.1}s",
+                self.started.elapsed().as_secs_f32()
+            ))
     }
 }
 
@@ -98,7 +101,6 @@ fn main() {
 
         // Tick the counter at 10 Hz so every capture shows fresh content.
         cx.spawn({
-            let target = target;
             async move |cx| {
                 loop {
                     cx.background_executor()
@@ -183,7 +185,7 @@ fn main() {
             }
 
             println!("[spike] done");
-            let _ = cx.update(|cx| cx.quit());
+            cx.update(|cx| cx.quit());
         })
         .detach();
     });

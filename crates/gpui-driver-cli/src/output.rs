@@ -37,12 +37,7 @@ fn render_node(node: &TreeNode, depth: usize, interactive_only: bool, out: &mut 
         out.push('\n');
     }
     for child in &node.children {
-        render_node(
-            child,
-            depth + usize::from(include),
-            interactive_only,
-            out,
-        );
+        render_node(child, depth + usize::from(include), interactive_only, out);
     }
 }
 
@@ -62,7 +57,12 @@ mod tests {
             id: id.map(Into::into),
             kind: "div".into(),
             text: None,
-            bounds: Bounds { x: 0.0, y: 0.0, w: 100.0, h: 50.0 },
+            bounds: Bounds {
+                x: 0.0,
+                y: 0.0,
+                w: 100.0,
+                h: 50.0,
+            },
             visible: true,
             enabled: true,
             focused: false,
@@ -73,10 +73,18 @@ mod tests {
 
     #[test]
     fn renders_indented_ids() {
-        let tree = node(None, false, vec![
-            node(Some("save"), true, vec![]),
-            node(Some("panel"), false, vec![node(Some("cancel"), true, vec![])]),
-        ]);
+        let tree = node(
+            None,
+            false,
+            vec![
+                node(Some("save"), true, vec![]),
+                node(
+                    Some("panel"),
+                    false,
+                    vec![node(Some("cancel"), true, vec![])],
+                ),
+            ],
+        );
         let out = render_tree(&tree, false);
         let lines: Vec<&str> = out.lines().collect();
         assert!(lines[0].starts_with("(div)"));
@@ -87,10 +95,14 @@ mod tests {
 
     #[test]
     fn interactive_only_keeps_structural_ancestors() {
-        let tree = node(None, false, vec![
-            node(Some("decoration"), false, vec![]),
-            node(Some("panel"), false, vec![node(Some("ok"), true, vec![])]),
-        ]);
+        let tree = node(
+            None,
+            false,
+            vec![
+                node(Some("decoration"), false, vec![]),
+                node(Some("panel"), false, vec![node(Some("ok"), true, vec![])]),
+            ],
+        );
         let out = render_tree(&tree, true);
         assert!(!out.contains("decoration"));
         assert!(out.contains("panel"));

@@ -202,7 +202,12 @@ mod tests {
         Bounds { x, y, w, h }
     }
 
-    const VIEWPORT: Bounds = Bounds { x: 0.0, y: 0.0, w: 800.0, h: 600.0 };
+    const VIEWPORT: Bounds = Bounds {
+        x: 0.0,
+        y: 0.0,
+        w: 800.0,
+        h: 600.0,
+    };
 
     #[test]
     fn assembles_nested_tree_in_prepaint_order() {

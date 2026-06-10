@@ -132,7 +132,10 @@ mod tests {
             &tx,
             "secret",
         );
-        assert_eq!(resp.error.unwrap().data.unwrap().kind, ErrorKind::AuthFailed);
+        assert_eq!(
+            resp.error.unwrap().data.unwrap().kind,
+            ErrorKind::AuthFailed
+        );
     }
 
     #[test]
@@ -143,7 +146,10 @@ mod tests {
             &tx,
             "secret",
         );
-        assert_eq!(resp.error.unwrap().data.unwrap().kind, ErrorKind::AuthFailed);
+        assert_eq!(
+            resp.error.unwrap().data.unwrap().kind,
+            ErrorKind::AuthFailed
+        );
     }
 
     #[test]

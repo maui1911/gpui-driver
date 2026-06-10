@@ -212,8 +212,7 @@ mod tests {
                     let mut line = String::new();
                     while reader.read_line(&mut line).is_ok_and(|n| n > 0) {
                         let req: RpcRequest = serde_json::from_str(&line).unwrap();
-                        let ok = req.params.get("token").and_then(|t| t.as_str())
-                            == Some(token);
+                        let ok = req.params.get("token").and_then(|t| t.as_str()) == Some(token);
                         let resp = if ok {
                             RpcResponse::success(req.id, json!({"ok": true}))
                         } else {
@@ -276,7 +275,10 @@ mod tests {
 
         let (selected, _client) = select_app(dir.path(), None, None).unwrap();
         assert_eq!(selected.file.app_name, "alive");
-        assert!(!stale_path.exists(), "stale discovery file should be deleted");
+        assert!(
+            !stale_path.exists(),
+            "stale discovery file should be deleted"
+        );
     }
 
     #[test]

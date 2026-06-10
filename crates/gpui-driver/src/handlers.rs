@@ -52,10 +52,7 @@ async fn dispatch(meta: &DriverMeta, cx: &mut AsyncApp, req: RpcRequest) -> RpcR
         "scroll" => params(req.params).and_then(|p| handle_scroll(cx, p)),
         "focus" => params(req.params).and_then(|p| handle_focus(cx, p)),
         "query" => params(req.params).and_then(|p| handle_query(cx, p)),
-        other => Err((
-            ErrorKind::Unsupported,
-            format!("unknown method: {other}"),
-        )),
+        other => Err((ErrorKind::Unsupported, format!("unknown method: {other}"))),
     };
     match result {
         Ok(value) => RpcResponse::success(id, value),
@@ -64,8 +61,7 @@ async fn dispatch(meta: &DriverMeta, cx: &mut AsyncApp, req: RpcRequest) -> RpcR
 }
 
 fn params<T: DeserializeOwned>(value: serde_json::Value) -> Result<T, (ErrorKind, String)> {
-    serde_json::from_value(value)
-        .map_err(|e| (ErrorKind::Internal, format!("invalid params: {e}")))
+    serde_json::from_value(value).map_err(|e| (ErrorKind::Internal, format!("invalid params: {e}")))
 }
 
 fn internal<E: std::fmt::Display>(e: E) -> (ErrorKind, String) {

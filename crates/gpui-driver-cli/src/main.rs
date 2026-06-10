@@ -20,7 +20,11 @@ use serde_json::json;
 use client::CliError;
 
 #[derive(Parser)]
-#[command(name = "gpui-driver", version, about = "Drive a running GPUI app: inspect, click, screenshot")]
+#[command(
+    name = "gpui-driver",
+    version,
+    about = "Drive a running GPUI app: inspect, click, screenshot"
+)]
 struct Cli {
     /// Select the app by name (defaults to the only running instrumented app).
     #[arg(long, global = true)]
@@ -188,7 +192,10 @@ fn execute(cli: &Cli, json_mode: bool) -> Result<i32, CliError> {
                     })
                 })
                 .collect();
-            println!("{}", serde_json::to_string_pretty(&json!({ "apps": list })).unwrap());
+            println!(
+                "{}",
+                serde_json::to_string_pretty(&json!({ "apps": list })).unwrap()
+            );
         } else if apps.is_empty() {
             println!("no instrumented apps discovered (dir: {})", dir.display());
         } else {
@@ -206,8 +213,7 @@ fn execute(cli: &Cli, json_mode: bool) -> Result<i32, CliError> {
         return Ok(EXIT_OK);
     }
 
-    let (_discovered, mut client) =
-        client::select_app(&dir, cli.app.as_deref(), cli.pid)?;
+    let (_discovered, mut client) = client::select_app(&dir, cli.app.as_deref(), cli.pid)?;
 
     let (method, params): (&str, serde_json::Value) = match &cli.command {
         Command::List => unreachable!("handled above"),
@@ -280,8 +286,9 @@ fn render(cli: &Cli, json_mode: bool, result: serde_json::Value) -> Result<i32, 
         let png = base64::engine::general_purpose::STANDARD
             .decode(data)
             .map_err(|e| CliError::Protocol(format!("invalid base64 image data: {e}")))?;
-        std::fs::write(output, &png)
-            .map_err(|e| CliError::Protocol(format!("failed to write {}: {e}", output.display())))?;
+        std::fs::write(output, &png).map_err(|e| {
+            CliError::Protocol(format!("failed to write {}: {e}", output.display()))
+        })?;
         if json_mode {
             println!(
                 "{}",
