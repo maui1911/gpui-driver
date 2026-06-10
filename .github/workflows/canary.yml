@@ -1,0 +1,30 @@
+name: zed-main canary
+
+# gpui is a fast-moving git dependency. Once a week, try building against zed `main`
+# (instead of the pinned rev) to surface upcoming breakage early. Failures don't block
+# anything; they're a heads-up to plan a rev bump.
+
+on:
+  schedule:
+    - cron: "0 6 * * 1" # Mondays 06:00 UTC
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  canary:
+    runs-on: windows-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Point gpui at zed main
+        shell: pwsh
+        run: |
+          $rev = (git ls-remote https://github.com/zed-industries/zed.git refs/heads/main).Split()[0]
+          Write-Host "zed main is at $rev"
+          (Get-Content Cargo.toml -Raw) -replace 'rev = "20a3f7705f18a9913571d4fcdee687b76abdb213"', "rev = `"$rev`"" | Set-Content Cargo.toml
+          (Get-Content vendor/gpui_windows/Cargo.toml -Raw) -replace 'rev = "20a3f7705f18a9913571d4fcdee687b76abdb213"', "rev = `"$rev`"" | Set-Content vendor/gpui_windows/Cargo.toml
+      - name: Build against zed main
+        run: cargo build -p gpui-driver -p demo-app
