@@ -24,10 +24,14 @@ cargo build -p demo-app && ./target/debug/demo-app.exe  # e2e target
 ## Invariants to preserve
 
 - **gpui rev is pinned** in the workspace `Cargo.toml` AND in
-  `vendor/gpui_windows/Cargo.toml` (three dep entries there). Bump them together, and
-  re-diff the vendored crate against `crates/gpui_windows` at the new rev — it is a
-  copy with two additive changes: `render_to_image` (renderer readback, see
-  `directx_renderer.rs` + `window.rs`) and `get_title`.
+  `vendor/gpui_windows/Cargo.toml` (three dep entries there). Bump them together via
+  `tools/update-vendor.sh <new-rev>` (Git Bash on Windows): it refetches upstream
+  `crates/gpui_windows`, re-applies `vendor/patches/gpui_windows-driver.patch` (two
+  additive changes: `render_to_image` renderer readback + `get_title`), rewrites both
+  manifests, and warns when upstream's own manifest drifted (then reconcile
+  `vendor/gpui_windows/Cargo.toml` by hand). If the patch no longer applies,
+  re-derive it against the fresh sources and update the patch file. The vendored
+  patch is the permanent plan of record; do not assume upstreaming.
 - **Everything UI-touching runs on the GPUI main thread.** Server threads only parse
   and forward; handlers run inside `cx.spawn`/`update_window`. Never call gpui from
   the TCP threads.

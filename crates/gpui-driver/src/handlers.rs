@@ -270,31 +270,75 @@ fn handle_click(cx: &mut AsyncApp, p: proto::ClickParams) -> HandlerResult {
     }))
 }
 
-/// Forces a fresh draw and captures the rendered scene. Fails with `unsupported` on
-/// platforms whose `PlatformWindow` lacks `render_to_image` (see docs/spike-a.md).
+/// Forces a fresh draw and captures the rendered scene, reporting how: `"renderer"`
+/// (offscreen readback via the vendored gpui_windows patch; reliable while occluded,
+/// minimized or locked) or `"printwindow"` (Win32 best-effort fallback on stock
+/// gpui_windows). Fails with `unsupported` only when neither path is available
+/// (see docs/spike-a.md).
+///
+/// `GPUI_DRIVER_FORCE_PRINTWINDOW=1` skips the renderer path, so the fallback can be
+/// exercised from a patched build.
 fn capture_image(
     window: &mut Window,
     cx: &mut gpui::App,
-) -> Result<image::RgbaImage, (ErrorKind, String)> {
+) -> Result<(image::RgbaImage, &'static str), (ErrorKind, String)> {
     window.refresh();
     window.draw(cx).clear();
-    window.render_to_image().map_err(|e| {
-        let message = format!("{e:#}");
-        let kind = if message.contains("not implemented") {
-            ErrorKind::Unsupported
-        } else {
-            ErrorKind::Internal
-        };
-        (kind, format!("screenshot failed: {message}"))
-    })
+
+    let forced = std::env::var("GPUI_DRIVER_FORCE_PRINTWINDOW").is_ok_and(|v| v == "1");
+    let renderer_err = if forced {
+        "renderer capture skipped (GPUI_DRIVER_FORCE_PRINTWINDOW=1)".to_string()
+    } else {
+        match window.render_to_image() {
+            Ok(image) => return Ok((image, "renderer")),
+            Err(e) => format!("{e:#}"),
+        }
+    };
+
+    // Renderer errors other than "not implemented" mean the patched path exists but
+    // broke; surface those instead of papering over them with a fallback capture.
+    if !forced && !renderer_err.contains("not implemented") {
+        return Err((
+            ErrorKind::Internal,
+            format!("screenshot failed: {renderer_err}"),
+        ));
+    }
+
+    match capture_printwindow(window) {
+        Ok(image) => Ok((image, "printwindow")),
+        Err(fallback_err) => Err((
+            ErrorKind::Unsupported,
+            format!("screenshot failed: {renderer_err}; PrintWindow fallback: {fallback_err:#}"),
+        )),
+    }
+}
+
+/// Best-effort capture without the vendored patch, via the window's HWND (reachable
+/// through gpui's public `HasWindowHandle` impl).
+#[cfg(target_os = "windows")]
+fn capture_printwindow(window: &Window) -> anyhow::Result<image::RgbaImage> {
+    use raw_window_handle::{HasWindowHandle, RawWindowHandle};
+    // Fully qualified: gpui's inherent `Window::window_handle` (returning its own
+    // AnyWindowHandle) shadows the raw-window-handle trait method.
+    let handle = HasWindowHandle::window_handle(window)
+        .map_err(|e| anyhow::anyhow!("window_handle: {e}"))?;
+    match handle.as_raw() {
+        RawWindowHandle::Win32(handle) => crate::printwindow::capture_hwnd(handle.hwnd.get()),
+        other => anyhow::bail!("unexpected window handle kind: {other:?}"),
+    }
+}
+
+#[cfg(not(target_os = "windows"))]
+fn capture_printwindow(_window: &Window) -> anyhow::Result<image::RgbaImage> {
+    anyhow::bail!("no fallback capture on this platform")
 }
 
 fn handle_screenshot(cx: &mut AsyncApp, p: proto::ScreenshotParams) -> HandlerResult {
     let handle = resolve_window(cx, p.window_id)?;
-    let (image, scale) = handle
+    let (image, method, scale) = handle
         .update(cx, |_, window, cx| {
-            let image = capture_image(window, cx)?;
-            Ok((image, window.scale_factor()))
+            let (image, method) = capture_image(window, cx)?;
+            Ok((image, method, window.scale_factor()))
         })
         .map_err(internal)??;
 
@@ -311,6 +355,7 @@ fn handle_screenshot(cx: &mut AsyncApp, p: proto::ScreenshotParams) -> HandlerRe
         width,
         height,
         scale,
+        method: method.to_string(),
     }))
 }
 

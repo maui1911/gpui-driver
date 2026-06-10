@@ -289,6 +289,15 @@ fn render(cli: &Cli, json_mode: bool, result: serde_json::Value) -> Result<i32, 
         std::fs::write(output, &png).map_err(|e| {
             CliError::Protocol(format!("failed to write {}: {e}", output.display()))
         })?;
+        // Older servers omit `method`; treat that as the renderer path.
+        let method = result["method"].as_str().unwrap_or("renderer");
+        if method == "printwindow" {
+            eprintln!(
+                "warning: captured via the PrintWindow fallback — the image may be stale or \
+                 black while the window is occluded, minimized, or the session is locked. \
+                 Apply the vendored gpui_windows patch for reliable capture (see README)."
+            );
+        }
         if json_mode {
             println!(
                 "{}",
@@ -297,15 +306,17 @@ fn render(cli: &Cli, json_mode: bool, result: serde_json::Value) -> Result<i32, 
                     "width": result["width"],
                     "height": result["height"],
                     "scale": result["scale"],
+                    "method": method,
                 })
             );
         } else {
             println!(
-                "wrote {} ({}x{}, scale {})",
+                "wrote {} ({}x{}, scale {}, method {})",
                 output.display(),
                 result["width"],
                 result["height"],
                 result["scale"],
+                method,
             );
         }
         return Ok(EXIT_OK);
