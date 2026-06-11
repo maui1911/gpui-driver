@@ -31,6 +31,17 @@ gpui-driver instead dispatches synthetic input through GPUI's own public event p
 and reads screenshots back from the renderer, not from the screen. Your machine stays
 usable while an agent tests your app, and CI-style runs survive lock screens.
 
+## Installing the CLI
+
+Grab a prebuilt binary from the
+[releases page](https://github.com/maui1911/gpui-driver/releases) (Windows, Linux,
+macOS — the CLI has no gpui dependency) and put it on your `PATH` as `gpui-driver`,
+or build from source:
+
+```console
+$ cargo install --git https://github.com/maui1911/gpui-driver gpui-driver-cli
+```
+
 ## Integrating your app
 
 ```toml

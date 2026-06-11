@@ -1,0 +1,51 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  create-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: gh release create "$GITHUB_REF_NAME" --verify-tag --generate-notes --title "$GITHUB_REF_NAME"
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+  # The CLI has no gpui dependency, so it cross-builds quickly everywhere.
+  upload-cli:
+    needs: create-release
+    strategy:
+      matrix:
+        include:
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            asset: gpui-driver-x86_64-pc-windows-msvc.exe
+            built: target/release/gpui-driver.exe
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            asset: gpui-driver-x86_64-unknown-linux-gnu
+            built: target/release/gpui-driver
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            asset: gpui-driver-aarch64-apple-darwin
+            built: target/release/gpui-driver
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo build --release -p gpui-driver-cli
+      - run: cp "${{ matrix.built }}" "${{ matrix.asset }}"
+        shell: bash
+      - run: gh release upload "$GITHUB_REF_NAME" "${{ matrix.asset }}"
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
