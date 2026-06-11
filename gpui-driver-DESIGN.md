@@ -274,7 +274,7 @@ SKILL.md teaching the workflow, roughly:
 
 ## 10. Licensing & repo conventions
 
-- License: MIT OR Apache-2.0 (Rust ecosystem default).
+- License: Apache-2.0 (matches the vendored zed code).
 - Repo: `gpui-driver` on GitHub. Workspace layout:
 
 ```

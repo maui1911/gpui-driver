@@ -173,4 +173,5 @@ shapes, and [gpui-driver-DESIGN.md](gpui-driver-DESIGN.md) for the design ration
 
 ## License
 
-MIT OR Apache-2.0, at your option.
+Apache-2.0 (matching the vendored `gpui_windows` code from zed, which is also
+Apache-2.0).
